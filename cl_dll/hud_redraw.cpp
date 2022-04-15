@@ -176,6 +176,9 @@ int CHud :: Redraw( float flTime, int intermission )
 		}
 	}
 
+    void HUD_DrawOrthoTriangles();
+    HUD_DrawOrthoTriangles();
+
 	// are we in demo mode? do we need to draw the logo in the top corner?
 	if (m_iLogo)
 	{

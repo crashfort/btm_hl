@@ -116,6 +116,8 @@ public:
 	int					m_afButtonLast;
 	int					m_afButtonPressed;
 	int					m_afButtonReleased;
+
+    int m_JetMode;
 	
 	edict_t			   *m_pentSndLast;			// last sound entity to modify player room type
 	float				m_flSndRoomtype;		// last roomtype set by sound entity
@@ -145,6 +147,7 @@ public:
 	float				m_rgflSuitNoRepeatTime[CSUITNOREPEAT];	// how long to wait before allowing repeat
 	int					m_lastDamageAmount;		// Last damage taken
 	float				m_tbdPrev;				// Time-based damage timer
+    BOOL m_fUpdateFog; // True when fog update msg needs to be sent
 
 	float				m_flgeigerRange;		// range to nearest radiation source
 	float				m_flgeigerDelay;		// delay per update of range msg to client
@@ -229,6 +232,9 @@ public:
 	void PackDeadPlayerItems( void );
 	void RemoveAllItems( BOOL removeSuit );
 	BOOL SwitchWeapon( CBasePlayerItem *pWeapon );
+
+    void FireJetRocket(Vector src);
+    void FireJetRockets();
 
 	// JOHN:  sends custom messages if player HUD data has changed  (eg health, ammo)
 	virtual void UpdateClientData( void );

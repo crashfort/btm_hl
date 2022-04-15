@@ -886,5 +886,8 @@ void GameDLLInit( void )
 // END REGISTER CVARS FOR SKILL LEVEL STUFF
 
 	SERVER_COMMAND( "exec skill.cfg\n" );
+
+    void Replay_Init();
+    Replay_Init();
 }
 

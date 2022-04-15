@@ -2397,6 +2397,280 @@ void PM_Physics_Toss()
 	PM_CheckWater();
 }
 
+// Jet movement code.
+// We cannot add new buttons because all 16 bits of the usercmd is full already.
+
+#define _XM_NO_INTRINSICS_
+#include <DirectXMath.h>
+using namespace DirectX;
+
+#define JET_DEBUG
+
+#define JET_THRUST 400.0f
+#define JET_HOVER_THRUST 1350.0f
+#define JET_PITCH_SPEED 30.0f
+#define JET_YAW_SPEED 30.0f
+#define JET_HOVER_YAW_SPEED 70.0f // Turn faster when hovering.
+#define JET_ROLL_SPEED 60.0f
+#define JET_MAX_SPEED 2500.0f
+#define JET_HOVER_SPEED 200.0f // Hovering if speed is less than this.
+
+// Because we cannot store stuff in the pev.
+struct JetState
+{
+    float yaw;
+    float pitch;
+    float speed;
+    float strafe;
+    float roll;
+    float wanted_pitch;
+    float hover_speed;
+};
+
+static JetState jet_states[MAX_CLIENTS];
+
+bool PM_Move_Towards(float* v, float target, float speed, float dt)
+{
+    float dist = target - *v;
+    bool reached = false;
+
+    if (dist < 0.0f)
+    {
+        *v -= speed * dt;
+
+        if (*v < target)
+        {
+            *v = target;
+            reached = true;
+        }
+    }
+
+    if (dist > 0.0f)
+    {
+        *v += speed * dt;
+
+        if (*v > target)
+        {
+            *v = target;
+            reached = true;
+        }
+    }
+
+    return reached;
+}
+
+float PM_JetSpeedFactor(JetState* state)
+{
+    return state->speed / JET_MAX_SPEED;
+}
+
+void PM_ToHLVec(XMVECTOR vec, vec3_t out)
+{
+    out[0] = XMVectorGetX(vec);
+    out[1] = XMVectorGetY(vec);
+    out[2] = XMVectorGetZ(vec);
+}
+
+void PM_Jet()
+{
+    JetState* state = &jet_states[pmove->player_index];
+
+    float dt = pmove->frametime;
+
+    float thrust = 0.0f;
+    float pitch = 0.0f;
+    float yaw = 0.0f;
+    float roll = 0.0f;
+    float hover_thrust = 0.0f;
+    float strafe = 0.0f;
+
+    if (pmove->cmd.buttons & IN_JUMP) thrust = JET_THRUST;
+    else if (pmove->cmd.buttons & IN_DUCK) thrust = -JET_THRUST;
+
+    if (thrust == 0.0f && state->speed > JET_HOVER_SPEED)
+    {
+        PM_Move_Towards(&state->speed, 0, 1.0f, dt);
+    }
+
+    state->speed += thrust * dt;
+    if (state->speed > JET_MAX_SPEED) state->speed = JET_MAX_SPEED;
+    if (state->speed < 0) state->speed = 0;
+
+    float inv_speed_factor = 1.0f - PM_JetSpeedFactor(state);
+    float speed_factor = PM_JetSpeedFactor(state);
+
+    // Hover thrusters only active when hovering.
+    if (state->speed < JET_HOVER_SPEED)
+    {
+        if (pmove->cmd.buttons & IN_RELOAD) hover_thrust = JET_HOVER_THRUST;
+        else if (pmove->cmd.buttons & IN_USE) hover_thrust = -JET_HOVER_THRUST;
+
+        if (hover_thrust != 0.0f)
+        {
+            PM_Move_Towards(&state->hover_speed, hover_thrust, 408.0f, dt);
+        }
+
+        else
+        {
+            PM_Move_Towards(&state->hover_speed, hover_thrust, 123.0f, dt);
+        }
+    }
+
+    else
+    {
+        PM_Move_Towards(&state->hover_speed, 0, 300.0f, dt);
+    }
+
+    if (pmove->cmd.forwardmove > 0) pitch = JET_PITCH_SPEED;
+    else if (pmove->cmd.forwardmove < 0) pitch = -JET_PITCH_SPEED;
+
+    if (pmove->cmd.upmove > 0) roll = JET_ROLL_SPEED;
+    else if (pmove->cmd.upmove < 0) roll = -JET_ROLL_SPEED;
+
+    if (pmove->cmd.sidemove > 0)
+    {
+        if (state->speed < JET_HOVER_SPEED)
+        {
+            yaw = -JET_HOVER_YAW_SPEED;
+        }
+
+        else
+        {
+            yaw = -JET_YAW_SPEED;
+        }
+    }
+
+    else if (pmove->cmd.sidemove < 0)
+    {
+        if (state->speed < JET_HOVER_SPEED)
+        {
+            yaw = JET_HOVER_YAW_SPEED;
+        }
+
+        else
+        {
+            yaw = JET_YAW_SPEED;
+        }
+    }
+
+    state->yaw += yaw * dt;
+    state->wanted_pitch += pitch * dt;
+    state->roll -= roll * dt;
+
+    if (state->speed > JET_HOVER_SPEED)
+    {
+        state->yaw += (state->roll / 3.0f) * dt; // Banking also changes yaw.
+    }
+
+    // Try to become horizontal when hovering.
+    if (pitch == 0.0f && state->speed < JET_HOVER_SPEED)
+    {
+        // PM_Move_Towards(&state->wanted_pitch, 0.0f, 27.0f, dt);
+    }
+
+    if (state->wanted_pitch > 80.0f) state->wanted_pitch = 80.0f;
+    if (state->wanted_pitch < -80.0f) state->wanted_pitch = -80.0f;
+
+    PM_Move_Towards(&state->pitch, state->wanted_pitch, 27.0f, dt);
+
+    // Bank when yawing too so it's easier to control.
+
+    if (yaw == 0.0f)
+    {
+        PM_Move_Towards(&state->roll, 0.0f, 19.0f, dt); // Return to horizontal when not banking anymore.
+    }
+
+    else
+    {
+        if (state->speed > JET_HOVER_SPEED)
+        {
+            PM_Move_Towards(&state->roll, (yaw * 2.0f) * speed_factor, 27.0f, dt); // Bank more with higher speed.
+        }
+
+        else
+        {
+            PM_Move_Towards(&state->roll, 0.0f, 19.0f, dt); // Always return to horizontal when hovering and turning.
+        }
+    }
+
+    if (roll != 0.0f)
+    {
+        // Strafe if hovering.
+        if (state->speed < JET_HOVER_SPEED)
+        {
+            PM_Move_Towards(&state->strafe, -roll * 1500.0f, 652.0f, dt);
+        }
+    }
+
+    else
+    {
+        PM_Move_Towards(&state->strafe, 0.0f, 227.0f, dt);
+    }
+
+    if (state->roll > 80.0f) state->roll = 80.0f;
+    if (state->roll < -80.0f) state->roll = -80.0f;
+
+    // Needed by the renderer.
+    if (state->yaw > 180.0f) state->yaw -= 360.0f;
+    if (state->yaw < -180.0f) state->yaw += 360.0f;
+
+    XMMATRIX heading = XMMatrixIdentity();
+    heading *= XMMatrixRotationY(XMConvertToRadians(state->pitch));
+    heading *= XMMatrixRotationZ(XMConvertToRadians(state->yaw));
+
+    // Get direction from heading.
+    XMVECTOR forward = XMVector3Normalize(XMVector3Transform(g_XMIdentityR0, heading));
+    XMVECTOR right = XMVector3Normalize(XMVector3Transform(g_XMIdentityR1, heading));
+    XMVECTOR up = XMVector3Normalize(XMVector3Transform(g_XMIdentityR2, heading));
+
+    XMVECTOR velo = (forward * state->speed) + (right * state->strafe) + (up * state->hover_speed);
+
+    // Increase fall when going vertically.
+    // float ent_gravity = (fabs(state->pitch) / 90.0f) * (speed_factor * (pmove->movevars->gravity * 1.2f)); // Stall if going too vertical.
+    float ent_gravity = pmove->movevars->gravity * 0.02f; // Keep gravity simple. Assume we are always hovering a little bit.
+
+    float result_velo[3];
+    result_velo[0] = XMVectorGetX(velo) * dt;
+    result_velo[1] = XMVectorGetY(velo) * dt;
+    result_velo[2] = (XMVectorGetZ(velo) - ent_gravity) * dt;
+
+    // Put result into entity.
+
+    pmove->origin[0] += result_velo[0];
+    pmove->origin[1] += result_velo[1];
+    pmove->origin[2] += result_velo[2];
+
+    pmove->angles[YAW] = state->yaw;
+    pmove->angles[PITCH] = state->pitch * -6;
+    pmove->angles[ROLL] = -state->roll;
+
+    PM_ToHLVec(forward, pmove->forward);
+    PM_ToHLVec(right, pmove->right);
+    PM_ToHLVec(up, pmove->up);
+
+    // pmove->Con_Printf("grav=%0.2f pitch=%0.2f\n", ent_gravity, state->pitch);
+    // pmove->Con_Printf("speed=%0.2f hover=%0.2f strafe=%0.2f | pitch=%0.2f yaw=%0.2f roll=%0.2f | x=%0.2f y=%0.2f z=%0.2f\n", state->speed, state->hover_speed, state->strafe, pmove->angles[PITCH], pmove->angles[YAW], pmove->angles[ROLL], result_velo[0], result_velo[1], result_velo[2]);
+}
+
+// Jet state needs to be reset when player dies or leaves.
+
+void PM_ResetJets()
+{
+    memset(jet_states, 0, sizeof(JetState) * MAX_CLIENTS);
+}
+
+void PM_ResetJetForPlayer(int player)
+{
+    JetState* state = &jet_states[player - 1];
+    memset(state, 0, sizeof(JetState));
+}
+
+float PM_JetSpeed(int player)
+{
+    JetState* state = &jet_states[player - 1];
+    return state->speed;
+}
+
 /*
 ====================
 PM_NoClip
@@ -2555,8 +2829,6 @@ void PM_Jump (void)
 
 	// In the air now.
     pmove->onground = -1;
-
-	PM_PreventMegaBunnyJumping();
 
 	if ( tfc )
 	{
@@ -2941,6 +3213,8 @@ were contacted during the move.
 */
 void PM_PlayerMove ( qboolean server )
 {
+    qboolean jet = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "jet"));
+
 	physent_t *pLadder = NULL;
 
 	// Are we running server code?
@@ -2979,8 +3253,11 @@ void PM_PlayerMove ( qboolean server )
 		}
 	}
 
-	// Now that we are "unstuck", see where we are ( waterlevel and type, pmove->onground ).
-	PM_CatagorizePosition();
+    if (!jet)
+    {
+        // Now that we are "unstuck", see where we are ( waterlevel and type, pmove->onground ).
+        PM_CatagorizePosition();
+    }
 
 	// Store off the starting water level
 	pmove->oldwaterlevel = pmove->waterlevel;
@@ -3002,12 +3279,14 @@ void PM_PlayerMove ( qboolean server )
 		}
 	}
 
-	PM_UpdateStepSound();
-
-	PM_Duck();
+    if (!jet)
+    {
+        PM_UpdateStepSound();
+        PM_Duck();
+    }
 	
 	// Don't run ladder code if dead or on a train
-	if ( !pmove->dead && !(pmove->flags & FL_ONTRAIN) )
+	if (!jet && !pmove->dead && !(pmove->flags & FL_ONTRAIN) )
 	{
 		if ( pLadder )
 		{
@@ -3041,8 +3320,19 @@ void PM_PlayerMove ( qboolean server )
 		break;
 
 	case MOVETYPE_NOCLIP:
-		PM_NoClip();
-		break;
+    {
+        if (jet)
+        {
+            PM_Jet();
+        }
+
+        else
+        {
+            PM_NoClip();
+        }
+
+	    break;
+    }
 
 	case MOVETYPE_TOSS:
 	case MOVETYPE_BOUNCE:

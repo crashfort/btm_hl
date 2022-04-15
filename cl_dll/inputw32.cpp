@@ -234,6 +234,7 @@ void DLLEXPORT IN_ActivateMouse (void)
 
 #endif
 		mouseactive = 1;
+        SDL_SetRelativeMouseMode(SDL_TRUE);
 	}
 }
 
@@ -254,6 +255,7 @@ void DLLEXPORT IN_DeactivateMouse (void)
 #endif
 
 		mouseactive = 0;
+        SDL_SetRelativeMouseMode(SDL_FALSE);
 	}
 }
 

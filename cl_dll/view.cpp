@@ -805,11 +805,15 @@ void V_CalcNormalRefdef ( struct ref_params_s *pparams )
 		// Player pitch is inverted
 		pitch /= -3.0;
 
-		// Slam local player's pitch value
-		ent->angles[ 0 ] = pitch;
-		ent->curstate.angles[ 0 ] = pitch;
-		ent->prevstate.angles[ 0 ] = pitch;
-		ent->latched.prevangles[ 0 ] = pitch;
+        // Looking up and down should not slam the jet angle.
+        if (!atoi(gEngfuncs.PhysInfo_ValueForKey("jet")))
+        {
+		    // Slam local player's pitch value
+		    ent->angles[ 0 ] = pitch;
+		    ent->curstate.angles[ 0 ] = pitch;
+		    ent->prevstate.angles[ 0 ] = pitch;
+		    ent->latched.prevangles[ 0 ] = pitch;
+        }
 	}
 
 	// override all previous settings if the viewent isn't the client

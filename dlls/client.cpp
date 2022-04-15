@@ -44,7 +44,6 @@
 #include <ctype.h>
 #endif
 
-extern DLL_GLOBAL ULONG		g_ulModelIndexPlayer;
 extern DLL_GLOBAL BOOL		g_fGameOver;
 extern DLL_GLOBAL int		g_iSkillLevel;
 extern DLL_GLOBAL ULONG		g_ulFrameCount;
@@ -682,7 +681,7 @@ void ClientUserInfoChanged( edict_t *pEntity, char *infobuffer )
 	g_pGameRules->ClientUserInfoChanged( GetClassPtr((CBasePlayer *)&pEntity->v), infobuffer );
 }
 
-static int g_serveractive = 0;
+int g_serveractive = 0;
 
 void ServerDeactivate( void )
 {
@@ -697,6 +696,9 @@ void ServerDeactivate( void )
 
 	// Peform any shutdown operations here...
 	//
+
+    void Replay_Shutdown();
+    Replay_Shutdown();
 }
 
 void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
@@ -731,6 +733,9 @@ void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
 
 	// Link user messages here to make sure first client can get them...
 	LinkUserMessages();
+
+    void Replay_Activate();
+    Replay_Activate();
 }
 
 
@@ -746,8 +751,10 @@ void PlayerPreThink( edict_t *pEntity )
 	entvars_t *pev = &pEntity->v;
 	CBasePlayer *pPlayer = (CBasePlayer *)GET_PRIVATE(pEntity);
 
-	if (pPlayer)
-		pPlayer->PreThink( );
+    if (pPlayer)
+    {
+        pPlayer->PreThink();
+    }
 }
 
 /*
@@ -796,6 +803,9 @@ void StartFrame( void )
 
 	gpGlobals->teamplay = teamplay.value;
 	g_ulFrameCount++;
+
+    void Replay_Update_Playback();
+    Replay_Update_Playback();
 }
 
 
@@ -892,6 +902,8 @@ void ClientPrecache( void )
 
 	PRECACHE_MODEL("models/player.mdl");
 
+    PRECACHE_MODEL("models/player/harrier_gunship/harrier_gunship.mdl");
+
 	// hud sounds
 
 	PRECACHE_SOUND("common/wpn_hudoff.wav");
@@ -912,6 +924,8 @@ void ClientPrecache( void )
 
 	if (giPrecacheGrunt)
 		UTIL_PrecacheOther("monster_human_grunt");
+
+    UTIL_PrecacheOther( "hvr_rocket" ); // Rockets for jet.
 }
 
 /*
@@ -1786,6 +1800,14 @@ void CmdStart( const edict_t *player, const struct usercmd_s *cmd, unsigned int 
 	{
 		UTIL_SetGroupTrace( pl->pev->groupinfo, GROUP_OP_AND );
 	}
+
+    auto index = g_engfuncs.pfnIndexOfEdict(player);
+
+    if (index == 1)
+    {
+        void Replay_Record(const edict_t* player, const struct usercmd_s *cmd);
+        Replay_Record(player, cmd);
+    }
 
 	pl->random_seed = random_seed;
 }

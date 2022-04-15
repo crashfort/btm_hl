@@ -753,7 +753,7 @@ void DLLEXPORT CL_CreateMove ( float frametime, struct usercmd_s *cmd, int activ
 	gEngfuncs.GetViewAngles( (float *)viewangles );
 	// Set current view angles.
 
-	if ( g_iAlive )
+	if ( g_iAlive && !atoi(gEngfuncs.PhysInfo_ValueForKey("jet")) ) // Looking around should not turn the jet.
 	{
 		VectorCopy( viewangles, cmd->viewangles );
 		VectorCopy( viewangles, oldangles );

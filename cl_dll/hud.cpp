@@ -125,6 +125,11 @@ int __MsgFunc_GameMode(const char *pszName, int iSize, void *pbuf )
 	return gHUD.MsgFunc_GameMode( pszName, iSize, pbuf );
 }
 
+int __MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf )
+{
+    return gHUD.MsgFunc_SetFog( pszName, iSize, pbuf );
+}
+
 // TFFree Command Menu
 void __CmdFunc_OpenCommandMenu(void)
 {
@@ -309,6 +314,7 @@ void CHud :: Init( void )
 	HOOK_MESSAGE( ScoreInfo );
 	HOOK_MESSAGE( TeamScore );
 	HOOK_MESSAGE( TeamInfo );
+    HOOK_MESSAGE( SetFog );
 
 	HOOK_MESSAGE( Spectator );
 	HOOK_MESSAGE( AllowSpec );
@@ -514,6 +520,8 @@ void CHud :: VidInit( void )
 	m_TextMessage.VidInit();
 	m_StatusIcons.VidInit();
 	GetClientVoiceMgr()->VidInit();
+    void JetHudVidInit();
+    JetHudVidInit();
 }
 
 int CHud::MsgFunc_Logo(const char *pszName,  int iSize, void *pbuf)

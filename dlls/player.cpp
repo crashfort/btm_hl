@@ -39,12 +39,11 @@
 
 // #define DUCKFIX
 
-extern DLL_GLOBAL ULONG		g_ulModelIndexPlayer;
 extern DLL_GLOBAL BOOL		g_fGameOver;
 extern DLL_GLOBAL	BOOL	g_fDrawLines;
 int gEvilImpulse101;
 extern DLL_GLOBAL int		g_iSkillLevel, gDisplayTitle;
-
+extern DLL_GLOBAL int		gLevelLoaded;
 
 BOOL gInitHUD = TRUE;
 
@@ -184,6 +183,7 @@ int gmsgSetFOV = 0;
 int gmsgShowMenu = 0;
 int gmsgGeigerRange = 0;
 int gmsgTeamNames = 0;
+int gmsgSetFog = 0;
 
 int gmsgStatusText = 0;
 int gmsgStatusValue = 0; 
@@ -232,6 +232,7 @@ void LinkUserMessages( void )
 	gmsgFade = REG_USER_MSG("ScreenFade", sizeof(ScreenFade));
 	gmsgAmmoX = REG_USER_MSG("AmmoX", 2);
 	gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
+    gmsgSetFog = REG_USER_MSG( "SetFog", -1 );
 
 	gmsgStatusText = REG_USER_MSG("StatusText", -1);
 	gmsgStatusValue = REG_USER_MSG("StatusValue", 3); 
@@ -893,8 +894,6 @@ void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 	
 	m_iRespawnFrames = 0;
 
-	pev->modelindex = g_ulModelIndexPlayer;    // don't use eyes
-
 	pev->deadflag		= DEAD_DYING;
 	pev->movetype		= MOVETYPE_TOSS;
 	ClearBits( pev->flags, FL_ONGROUND );
@@ -1346,6 +1345,7 @@ void CBasePlayer::PlayerDeathThink(void)
 
 	pev->button = 0;
 	m_iRespawnFrames = 0;
+    m_fUpdateFog = TRUE;
 
 	//ALERT(at_console, "Respawn\n");
 
@@ -1982,6 +1982,37 @@ void CBasePlayer::PreThink(void)
 	{
 		pev->velocity = g_vecZero;
 	}
+
+    extern cvar_t rp_jet;
+
+
+    if ((int)rp_jet.value != m_JetMode)
+    {
+        m_JetMode = (int)rp_jet.value;
+        g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jet", rp_jet.string);
+
+        if (m_JetMode)
+        {
+            // Transform into jet.
+            pev->movetype = MOVETYPE_NOCLIP; // We have our own movement type in pm_shared.
+            pev->solid = SOLID_NOT; // Maps are too small so we want to go outside of the map boundaries.
+        }
+
+        else
+        {
+            // Back to regular player.
+            pev->movetype = MOVETYPE_WALK;
+            pev->solid = SOLID_SLIDEBOX;
+        }
+    }
+
+    if (rp_jet.value)
+    {
+        if (m_afButtonPressed & IN_ATTACK)
+        {
+            FireJetRockets();
+        }
+    }
 }
 /* Time based Damage works as follows: 
 	1) There are several types of timebased damage:
@@ -2438,8 +2469,6 @@ CheckPowerups(entvars_t *pev)
 {
 	if (pev->health <= 0)
 		return;
-
-	pev->modelindex = g_ulModelIndexPlayer;    // don't use eyes
 }
 
 
@@ -2870,9 +2899,13 @@ void CBasePlayer::Spawn( void )
 	m_bitsDamageType	= 0;
 	m_afPhysicsFlags	= 0;
 	m_fLongJump			= FALSE;// no longjump module. 
+    m_JetMode = 0;
+
+    extern cvar_t rp_jet;
 
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "0" );
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "hl", "1" );
+	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "jet", rp_jet.string );
 
 	pev->fov = m_iFOV				= 0;// init field of view.
 	m_iClientFOV		= -1; // make sure fov reset is sent
@@ -2900,7 +2933,6 @@ void CBasePlayer::Spawn( void )
 	g_pGameRules->GetPlayerSpawnSpot( this );
 
     SET_MODEL(ENT(pev), "models/player.mdl");
-    g_ulModelIndexPlayer = pev->modelindex;
 	pev->sequence		= LookupActivity( ACT_IDLE );
 
 	if ( FBitSet(pev->flags, FL_DUCKING) ) 
@@ -3029,8 +3061,6 @@ int CBasePlayer::Restore( CRestore &restore )
 // Copied from spawn() for now
 	m_bloodColor	= BLOOD_COLOR_RED;
 
-    g_ulModelIndexPlayer = pev->modelindex;
-
 	if ( FBitSet(pev->flags, FL_DUCKING) ) 
 	{
 		// Use the crouch HACK
@@ -3062,6 +3092,9 @@ int CBasePlayer::Restore( CRestore &restore )
 	//			Barring that, we clear it out here instead of using the incorrect restored time value.
 	m_flNextAttack = UTIL_WeaponTimeBase();
 #endif
+
+    // Force the fog to update next frame
+    m_fUpdateFog = TRUE;
 
 	return status;
 }
@@ -4178,6 +4211,20 @@ void CBasePlayer :: UpdateClientData( void )
 		UpdateStatusBar();
 		m_flNextSBarUpdateTime = gpGlobals->time + 0.2;
 	}
+
+    //Update fog after respawn (also sets the fog after connect in multiplayer)
+    if( m_fUpdateFog )
+    {
+        m_fUpdateFog = FALSE;
+        CClientFog::CheckFogForClient( edict() );
+    }
+
+    //Enable fog after level load (singleplayer only)
+    if( gLevelLoaded )
+    {
+        CClientFog::CheckFogForClient( edict() );
+        gLevelLoaded = FALSE;
+    }
 }
 
 
@@ -4663,6 +4710,49 @@ BOOL CBasePlayer :: SwitchWeapon( CBasePlayerItem *pWeapon )
 	pWeapon->Deploy( );
 
 	return TRUE;
+}
+
+static Vector Convert_ModelAngle_To_ViewAngle(const Vector& view_ang)
+{
+    auto ret = view_ang;
+    ret[0] /= -3.0f;
+
+    return ret;
+}
+
+void CBasePlayer::FireJetRocket(Vector src)
+{
+    UTIL_MakeAimVectors(Convert_ModelAngle_To_ViewAngle(pev->angles));
+
+    MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, src);
+    WRITE_BYTE(TE_SMOKE);
+    WRITE_COORD(src.x);
+    WRITE_COORD(src.y);
+    WRITE_COORD(src.z);
+    WRITE_SHORT(g_sModelIndexSmoke);
+    WRITE_BYTE(20); // scale * 10
+    WRITE_BYTE(12); // framerate
+    MESSAGE_END();
+
+    CBaseEntity* pRocket = CBaseEntity::Create("hvr_rocket", src, Convert_ModelAngle_To_ViewAngle(pev->angles), edict());
+
+    if (pRocket)
+    {
+        pRocket->pev->velocity = (pev->velocity + gpGlobals->v_forward * 2000) + (gpGlobals->v_up * -64);
+    }
+}
+
+void CBasePlayer::FireJetRockets()
+{
+    UTIL_MakeAimVectors(Convert_ModelAngle_To_ViewAngle(pev->angles));
+
+    // Offsets from the eye position where to fire the rockets (use a model viewer).
+    Vector left_side = Vector(41, 62, 21);
+    Vector right_side = Vector(41, -62, 21);
+
+    // FireJetRocket(pev->origin + (gpGlobals->v_forward * 128));
+    FireJetRocket(pev->origin + (gpGlobals->v_forward * left_side.x) + (gpGlobals->v_right * left_side.y) + (gpGlobals->v_up * left_side.z));
+    FireJetRocket(pev->origin + (gpGlobals->v_forward * right_side.x) + (gpGlobals->v_right * right_side.y) + (gpGlobals->v_up * right_side.z));
 }
 
 //=========================================================

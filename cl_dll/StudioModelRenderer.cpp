@@ -1700,14 +1700,16 @@ int CStudioModelRenderer::StudioDrawPlayer( int flags, entity_state_t *pplayer )
 	IEngineStudio.StudioSetHeader( m_pStudioHeader );
 	IEngineStudio.SetRenderModel( m_pRenderModel );
 
-	if (pplayer->gaitsequence)
+    // Jet does not use gait. Needed so we can strafe when hovering because the renderer
+    // always tries to face the moving direction.
+	if (pplayer->gaitsequence && !atoi(gEngfuncs.PhysInfo_ValueForKey("jet")))
 	{
 		vec3_t orig_angles;
 		m_pPlayerInfo = IEngineStudio.PlayerInfo( m_nPlayerIndex );
 
 		VectorCopy( m_pCurrentEntity->angles, orig_angles );
-	
-		StudioProcessGait( pplayer );
+
+        StudioProcessGait( pplayer );
 
 		m_pPlayerInfo->gaitsequence = pplayer->gaitsequence;
 		m_pPlayerInfo = NULL;
