@@ -2409,16 +2409,17 @@ using namespace DirectX;
 #define JET_THRUST 400.0f
 #define JET_HOVER_THRUST 1350.0f
 #define JET_PITCH_SPEED 30.0f
-#define JET_YAW_SPEED 30.0f
-#define JET_HOVER_YAW_SPEED 70.0f // Turn faster when hovering.
+#define JET_YAW_SPEED 110.0f
+#define JET_HOVER_YAW_SPEED 170.0f // Turn faster when hovering.
 #define JET_ROLL_SPEED 60.0f
 #define JET_MAX_SPEED 2500.0f
-#define JET_HOVER_SPEED 200.0f // Hovering if speed is less than this.
+#define JET_HOVER_SPEED 300.0f // Hovering if speed is less than this.
 
 // Because we cannot store stuff in the pev.
 struct JetState
 {
     float yaw;
+    float yaw_velo; // Overshoot yaw a little so it looks better and doesn't snap.
     float pitch;
     float speed;
     float strafe;
@@ -2459,16 +2460,24 @@ bool PM_Move_Towards(float* v, float target, float speed, float dt)
     return reached;
 }
 
-float PM_JetSpeedFactor(JetState* state)
-{
-    return state->speed / JET_MAX_SPEED;
-}
-
 void PM_ToHLVec(XMVECTOR vec, vec3_t out)
 {
     out[0] = XMVectorGetX(vec);
     out[1] = XMVectorGetY(vec);
     out[2] = XMVectorGetZ(vec);
+}
+
+void PM_Clamp(float* v, float min, float max)
+{
+    if (*v < min)
+    {
+        *v = min;
+    }
+
+    else if (*v > max)
+    {
+        *v = max;
+    }
 }
 
 void PM_Jet()
@@ -2493,11 +2502,10 @@ void PM_Jet()
     }
 
     state->speed += thrust * dt;
-    if (state->speed > JET_MAX_SPEED) state->speed = JET_MAX_SPEED;
-    if (state->speed < 0) state->speed = 0;
+    PM_Clamp(&state->speed, -JET_MAX_SPEED, JET_MAX_SPEED);
 
-    float inv_speed_factor = 1.0f - PM_JetSpeedFactor(state);
-    float speed_factor = PM_JetSpeedFactor(state);
+    float speed_factor = state->speed / JET_MAX_SPEED;
+    float strafe_factor = state->strafe / 1500.0f;
 
     // Hover thrusters only active when hovering.
     if (state->speed < JET_HOVER_SPEED)
@@ -2520,6 +2528,8 @@ void PM_Jet()
     {
         PM_Move_Towards(&state->hover_speed, 0, 300.0f, dt);
     }
+
+    PM_Move_Towards(&state->speed, 0, 62.0f, dt); // Decrease forward / backward thrust when hovering to control easier.
 
     if (pmove->cmd.forwardmove > 0) pitch = JET_PITCH_SPEED;
     else if (pmove->cmd.forwardmove < 0) pitch = -JET_PITCH_SPEED;
@@ -2553,38 +2563,45 @@ void PM_Jet()
         }
     }
 
-    state->yaw += yaw * dt;
+    state->yaw_velo += yaw * dt;
     state->wanted_pitch += pitch * dt;
     state->roll -= roll * dt;
 
     if (state->speed > JET_HOVER_SPEED)
     {
-        state->yaw += (state->roll / 3.0f) * dt; // Banking also changes yaw.
+        state->yaw += (state->roll / 3.0f) * dt; // Banking also changes yaw when going fast.
     }
 
     // Try to become horizontal when hovering.
     if (pitch == 0.0f && state->speed < JET_HOVER_SPEED)
     {
-        // PM_Move_Towards(&state->wanted_pitch, 0.0f, 27.0f, dt);
+        PM_Move_Towards(&state->wanted_pitch, 0.0f, 4.0f, dt);
     }
 
     if (state->wanted_pitch > 80.0f) state->wanted_pitch = 80.0f;
     if (state->wanted_pitch < -80.0f) state->wanted_pitch = -80.0f;
 
     PM_Move_Towards(&state->pitch, state->wanted_pitch, 27.0f, dt);
+    PM_Move_Towards(&state->yaw_velo, 0.0f, 67.0f, dt);
+
+    PM_Clamp(&state->yaw_velo, -47.0f, 47.0f);
+
+    state->yaw += state->yaw_velo * dt;
+
+    // pmove->Con_Printf("yaw_velo=%0.2f\n", state->yaw_velo);
 
     // Bank when yawing too so it's easier to control.
 
     if (yaw == 0.0f)
     {
-        PM_Move_Towards(&state->roll, 0.0f, 19.0f, dt); // Return to horizontal when not banking anymore.
+        PM_Move_Towards(&state->roll, 0.0f, 39.0f, dt); // Return to horizontal when not banking anymore.
     }
 
     else
     {
         if (state->speed > JET_HOVER_SPEED)
         {
-            PM_Move_Towards(&state->roll, (yaw * 2.0f) * speed_factor, 27.0f, dt); // Bank more with higher speed.
+            PM_Move_Towards(&state->roll, yaw * speed_factor, 27.0f, dt); // Bank more with higher speed.
         }
 
         else
@@ -2598,7 +2615,7 @@ void PM_Jet()
         // Strafe if hovering.
         if (state->speed < JET_HOVER_SPEED)
         {
-            PM_Move_Towards(&state->strafe, -roll * 1500.0f, 652.0f, dt);
+            PM_Move_Towards(&state->strafe, state->roll * 42.0f, 652.0f, dt);
         }
     }
 
@@ -2607,8 +2624,15 @@ void PM_Jet()
         PM_Move_Towards(&state->strafe, 0.0f, 227.0f, dt);
     }
 
-    if (state->roll > 80.0f) state->roll = 80.0f;
-    if (state->roll < -80.0f) state->roll = -80.0f;
+    if (state->speed > JET_HOVER_SPEED)
+    {
+        PM_Clamp(&state->roll, -80.0f, 80.0f);
+    }
+
+    else
+    {
+        PM_Clamp(&state->roll, -40.0f, 40.0f);
+    }
 
     // Needed by the renderer.
     if (state->yaw > 180.0f) state->yaw -= 360.0f;
@@ -2623,7 +2647,7 @@ void PM_Jet()
     XMVECTOR right = XMVector3Normalize(XMVector3Transform(g_XMIdentityR1, heading));
     XMVECTOR up = XMVector3Normalize(XMVector3Transform(g_XMIdentityR2, heading));
 
-    XMVECTOR velo = (forward * state->speed) + (right * state->strafe) + (up * state->hover_speed);
+    XMVECTOR velo = (forward * state->speed) + (right * state->strafe) + (g_XMIdentityR2 * state->hover_speed); // Hover should always be parallel movement.
 
     // Increase fall when going vertically.
     // float ent_gravity = (fabs(state->pitch) / 90.0f) * (speed_factor * (pmove->movevars->gravity * 1.2f)); // Stall if going too vertical.
