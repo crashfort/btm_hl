@@ -2664,6 +2664,10 @@ void PM_Jet()
     pmove->origin[1] += result_velo[1];
     pmove->origin[2] += result_velo[2];
 
+    pmove->velocity[0] = result_velo[0];
+    pmove->velocity[1] = result_velo[1];
+    pmove->velocity[2] = result_velo[2];
+
     pmove->angles[YAW] = state->yaw;
     pmove->angles[PITCH] = state->pitch * -6;
     pmove->angles[ROLL] = -state->roll;

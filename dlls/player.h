@@ -204,6 +204,8 @@ public:
 	virtual void Spawn( void );
 	void Pain( void );
 
+    void SendWeatherUpdate();
+
 //	virtual void Think( void );
 	virtual void Jump( void );
 	virtual void Duck( void );

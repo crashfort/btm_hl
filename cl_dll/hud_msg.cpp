@@ -20,6 +20,7 @@
 #include "cl_util.h"
 #include "parsemsg.h"
 #include "r_efx.h"
+#include "CEnvironment.h"
 
 #include "particleman.h"
 extern IParticleMan *g_pParticleMan;
@@ -87,6 +88,8 @@ void CHud :: MsgFunc_InitHUD( const char *pszName, int iSize, void *pbuf )
 		pList = pList->pNext;
 	}
 
+    g_Environment.Initialize();
+
 #if defined( _TFC )
 	ClearEventList();
 
@@ -146,6 +149,13 @@ int CHud :: MsgFunc_Concuss( const char *pszName, int iSize, void *pbuf )
 	else
 		this->m_StatusIcons.DisableIcon("dmg_concuss");
 	return 1;
+}
+
+int CHud::MsgFunc_ReceiveW( const char* pszName, int iSize, void* pBuf )
+{
+    BEGIN_READ(pBuf, iSize);
+    g_Environment.m_WeatherType = READ_BYTE();
+    return 1;
 }
 
 int CHud::MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf )

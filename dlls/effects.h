@@ -216,7 +216,7 @@ public:
     void KeyValue( KeyValueData *pkvd );
     void EXPORT FogThink();
     void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
-    float m_iStartDist;
+    float m_iDensity;
     float m_iEndDist;
     BOOL m_fActive;
     virtual int Save( CSave &save );

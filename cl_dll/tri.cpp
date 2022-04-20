@@ -26,6 +26,8 @@
 #include "particleman.h"
 #include "r_studioint.h"
 #include "tri.h"
+#include "CEnvironment.h"
+
 extern IParticleMan *g_pParticleMan;
 
 extern float g_iFogColor[ 4 ];
@@ -39,7 +41,7 @@ extern engine_studio_api_t IEngineStudio;
 void BlackFog( void )
 {
     static float fColorBlack[ 3 ] = { 0,0,0 };
-    bool bFog = g_iStartDist > 0 && g_iEndDist > 0;
+    bool bFog = g_iEndDist > g_iStartDist;
     if( bFog )
         gEngfuncs.pTriAPI->Fog( fColorBlack, g_iStartDist, g_iEndDist, bFog );
     else
@@ -48,23 +50,23 @@ void BlackFog( void )
 
 void RenderFog( void )
 {
-    float g_iFogColor[ 4 ] = { FogColor.x, FogColor.y, FogColor.z, 1.0 };
-    bool bFog = g_iStartDist > 0 && g_iEndDist > 0;
-    if( bFog )
+    float g_iFogColor[4] = { FogColor.x, FogColor.y, FogColor.z, 1.0 };
+    bool bFog = g_iEndDist > g_iStartDist;
+    if (bFog)
     {
-        if( IEngineStudio.IsHardware() == 2 )
+        if (IEngineStudio.IsHardware() == 2)
         {
-            gEngfuncs.pTriAPI->Fog( g_iFogColor, g_iStartDist, g_iEndDist, bFog );
+            gEngfuncs.pTriAPI->Fog(g_iFogColor, g_iStartDist, g_iEndDist, bFog);
         }
-        else if( IEngineStudio.IsHardware() == 1 )
+        else if (IEngineStudio.IsHardware() == 1)
         {
-            glEnable( GL_FOG );
-            glFogi( GL_FOG_MODE, GL_LINEAR );
-            glFogfv( GL_FOG_COLOR, g_iFogColor );
-            glFogf( GL_FOG_DENSITY, 1.0f );
-            glHint( GL_FOG_HINT, GL_DONT_CARE );
-            glFogf( GL_FOG_START, g_iStartDist );
-            glFogf( GL_FOG_END, g_iEndDist );
+            glEnable(GL_FOG);
+            glFogi(GL_FOG_MODE, GL_EXP);
+            glFogfv(GL_FOG_COLOR, g_iFogColor);
+            glFogf(GL_FOG_DENSITY, 0.0020f);
+            glHint(GL_FOG_HINT, GL_DONT_CARE);
+            glFogf(GL_FOG_START, 1500);
+            glFogf(GL_FOG_END, 2000);
         }
     }
 }
@@ -159,7 +161,10 @@ void DLLEXPORT HUD_DrawTransparentTriangles( void )
     BlackFog();
 
 	if ( g_pParticleMan )
-		 g_pParticleMan->Update();
+    {
+        g_pParticleMan->Update();
+        g_Environment.Update();
+    }
 }
 
 void HUD_DrawOrthoTriangles()

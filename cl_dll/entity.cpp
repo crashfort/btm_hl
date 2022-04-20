@@ -14,6 +14,7 @@
 #include "pm_shared.h"
 #include "bench.h"
 #include "Exports.h"
+#include "com_weapons.h"
 
 #include "particleman.h"
 extern IParticleMan *g_pParticleMan;
@@ -400,7 +401,14 @@ void DLLEXPORT HUD_TempEntUpdate (
 
 	Vector		vAngles;
 
-	gEngfuncs.GetViewAngles( (float*)vAngles );
+    if( g_iUser1 != 0 && g_iUser1 != OBS_ROAMING )
+    {
+        vAngles = v_angles;
+    }
+    else
+    {
+        gEngfuncs.GetViewAngles( vAngles );
+    }
 
 	if ( g_pParticleMan )
 		 g_pParticleMan->SetVariables( cl_gravity, vAngles );

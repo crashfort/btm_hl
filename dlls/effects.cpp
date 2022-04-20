@@ -2279,7 +2279,6 @@ LINK_ENTITY_TO_CLASS( env_fog, CClientFog );
 TYPEDESCRIPTION CClientFog::m_SaveData[] =
 {
     DEFINE_FIELD( CClientFog, m_fActive, FIELD_BOOLEAN ),
-    DEFINE_FIELD( CClientFog, m_iStartDist, FIELD_INTEGER ),
     DEFINE_FIELD( CClientFog, m_iEndDist, FIELD_INTEGER ),
 };
 
@@ -2296,14 +2295,9 @@ CClientFog *CClientFog::FogCreate()
 
 void CClientFog::KeyValue( KeyValueData *pkvd )
 {
-    if( FStrEq( pkvd->szKeyName, "startdist" ) )
+    if( FStrEq( pkvd->szKeyName, "density" ) )
     {
-        m_iStartDist = atoi( pkvd->szValue );
-        pkvd->fHandled = TRUE;
-    }
-    else if( FStrEq( pkvd->szKeyName, "enddist" ) )
-    {
-        m_iEndDist = atoi( pkvd->szValue );
+        m_iDensity = atof( pkvd->szValue );
         pkvd->fHandled = TRUE;
     }
     else
@@ -2313,6 +2307,8 @@ void CClientFog::KeyValue( KeyValueData *pkvd )
 void CClientFog::Spawn()
 {
     pev->effects |= EF_NODRAW;
+
+    m_iEndDist = CVAR_GET_FLOAT("sv_zmax") * (1.0f - m_iDensity); // Looks better for end scene.
 
     if( FStringNull( pev->targetname ) )
         pev->spawnflags |= SF_FOG_STARTON;
@@ -2360,7 +2356,7 @@ void CClientFog::CheckFogForClient( edict_t* pClient )
 
     if( pFog && pFog->m_fActive == TRUE )
     {
-        pFog->SetFog( pClient, pFog->pev->rendercolor, pFog->m_iStartDist, pFog->m_iEndDist );
+        pFog->SetFog( pClient, pFog->pev->rendercolor, 0, pFog->m_iEndDist );
     }
     else
     {
@@ -2370,7 +2366,7 @@ void CClientFog::CheckFogForClient( edict_t* pClient )
 
 void CClientFog::EnableForAll()
 {
-    SetFogAll( pev->rendercolor, m_iStartDist, m_iEndDist );
+    SetFogAll( pev->rendercolor, 0, m_iEndDist );
 }
 
 static void InternalSetFog( edict_t* pClient, const Vector& color, float startDistance, float endDistance )

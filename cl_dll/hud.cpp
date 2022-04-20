@@ -31,6 +31,8 @@
 #include "demo_api.h"
 #include "vgui_ScorePanel.h"
 
+#include "CEnvironment.h"
+
 hud_player_info_t	 g_PlayerInfoList[MAX_PLAYERS+1];	   // player info from the engine
 extra_player_info_t  g_PlayerExtraInfo[MAX_PLAYERS+1];   // additional player info sent directly to the client dll
 
@@ -118,6 +120,11 @@ int __MsgFunc_SetFOV(const char *pszName, int iSize, void *pbuf)
 int __MsgFunc_Concuss(const char *pszName, int iSize, void *pbuf)
 {
 	return gHUD.MsgFunc_Concuss( pszName, iSize, pbuf );
+}
+
+int __MsgFunc_ReceiveW( const char* pszName, int iSize, void* pBuf )
+{
+    return gHUD.MsgFunc_ReceiveW( pszName, iSize, pBuf );
 }
 
 int __MsgFunc_GameMode(const char *pszName, int iSize, void *pbuf )
@@ -295,6 +302,7 @@ void CHud :: Init( void )
 	HOOK_MESSAGE( ViewMode );
 	HOOK_MESSAGE( SetFOV );
 	HOOK_MESSAGE( Concuss );
+    HOOK_MESSAGE( ReceiveW );
 
 	// TFFree CommandMenu
 	HOOK_COMMAND( "+commandmenu", OpenCommandMenu );
@@ -337,6 +345,7 @@ void CHud :: Init( void )
 	m_pCvarStealMouse = CVAR_CREATE( "hud_capturemouse", "1", FCVAR_ARCHIVE );
 	m_pCvarDraw = CVAR_CREATE( "hud_draw", "1", FCVAR_ARCHIVE );
 	cl_lw = gEngfuncs.pfnGetCvarPointer( "cl_lw" );
+    cl_weather = CVAR_CREATE( "cl_weather", "1", FCVAR_ARCHIVE );
 
 	m_pSpriteList = NULL;
 

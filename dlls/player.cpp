@@ -184,6 +184,7 @@ int gmsgShowMenu = 0;
 int gmsgGeigerRange = 0;
 int gmsgTeamNames = 0;
 int gmsgSetFog = 0;
+int gmsgReceiveW = 0;
 
 int gmsgStatusText = 0;
 int gmsgStatusValue = 0; 
@@ -233,6 +234,7 @@ void LinkUserMessages( void )
 	gmsgAmmoX = REG_USER_MSG("AmmoX", 2);
 	gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
     gmsgSetFog = REG_USER_MSG( "SetFog", -1 );
+    gmsgReceiveW = REG_USER_MSG( "ReceiveW", 1 );
 
 	gmsgStatusText = REG_USER_MSG("StatusText", -1);
 	gmsgStatusValue = REG_USER_MSG("StatusValue", 3); 
@@ -4009,6 +4011,8 @@ void CBasePlayer :: UpdateClientData( void )
 		FireTargets( "game_playerspawn", this, this, USE_TOGGLE, 0 );
 
 		InitStatusBar();
+
+        SendWeatherUpdate();
 	}
 
 	if ( m_iHideHUD != m_iClientHideHUD )
@@ -4227,6 +4231,17 @@ void CBasePlayer :: UpdateClientData( void )
     }
 }
 
+void CBasePlayer::SendWeatherUpdate()
+{
+    CBaseEntity* found_snow = UTIL_FindEntityByClassname(NULL, "env_snow");
+
+    if (found_snow)
+    {
+        MESSAGE_BEGIN(MSG_ONE, gmsgReceiveW, NULL, edict());
+        WRITE_BYTE(1);
+        MESSAGE_END();
+    }
+}
 
 //=========================================================
 // FBecomeProne - Overridden for the player to set the proper
