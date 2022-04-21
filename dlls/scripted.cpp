@@ -1257,4 +1257,77 @@ int CFurniture::Classify ( void )
 	return	CLASS_NONE;
 }
 
+// Needed for last scene in czds map.
+class CItemGeneric : public CBaseMonster
+{
+public:
+    void Spawn();
+    int Classify();
+    void KeyValue(KeyValueData* pkvd);
+    int ObjectCaps() { return (CBaseMonster::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
 
+    void EXPORT StartItem();
+
+    string_t m_iSequence;
+};
+
+LINK_ENTITY_TO_CLASS(item_generic, CItemGeneric);
+
+void CItemGeneric::Spawn()
+{
+    PRECACHE_MODEL(STRING(pev->model));
+    SET_MODEL(edict(), STRING(pev->model));
+
+    pev->movetype = MOVETYPE_NONE;
+    pev->solid = SOLID_NOT;
+    pev->health = 80000;
+    pev->takedamage = DAMAGE_NO;
+    pev->effects = 0;
+    pev->yaw_speed = 0;
+    pev->sequence = 0;
+    pev->frame = 0;
+
+    if (m_iSequence)
+    {
+        int sequence = LookupSequence(STRING(m_iSequence));
+
+        vec3_t mins;
+        vec3_t maxs;
+        ExtractBbox(sequence, mins, maxs);
+        UTIL_SetSize(pev, mins, maxs);
+        UTIL_SetOrigin(pev, pev->origin);
+
+        SetThink(&CItemGeneric::StartItem);
+        pev->nextthink = gpGlobals->time + 0.1f;
+    }
+}
+
+int CItemGeneric::Classify(void)
+{
+    return CLASS_NONE;
+}
+
+void CItemGeneric::KeyValue(KeyValueData* pkvd)
+{
+    if (FStrEq(pkvd->szKeyName, "body"))
+    {
+        pev->body = atoi(pkvd->szValue);
+        pkvd->fHandled = TRUE;
+    }
+
+    else if (FStrEq(pkvd->szKeyName, "skin"))
+    {
+        pev->skin = atoi(pkvd->szValue);
+        pkvd->fHandled = TRUE;
+    }
+
+    else if (FStrEq(pkvd->szKeyName, "sequencename"))
+    {
+        m_iSequence = ALLOC_STRING(pkvd->szValue);
+        pkvd->fHandled = TRUE;
+    }
+}
+
+void CItemGeneric::StartItem()
+{
+}
