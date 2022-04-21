@@ -4216,18 +4216,11 @@ void CBasePlayer :: UpdateClientData( void )
 		m_flNextSBarUpdateTime = gpGlobals->time + 0.2;
 	}
 
-    //Update fog after respawn (also sets the fog after connect in multiplayer)
-    if( m_fUpdateFog )
+    // Send every frame because it breaks otherwise when starting demos.
+    if (1)
     {
         m_fUpdateFog = FALSE;
-        CClientFog::CheckFogForClient( edict() );
-    }
-
-    //Enable fog after level load (singleplayer only)
-    if( gLevelLoaded )
-    {
-        CClientFog::CheckFogForClient( edict() );
-        gLevelLoaded = FALSE;
+        CClientFog::CheckFogForClient(edict());
     }
 }
 
