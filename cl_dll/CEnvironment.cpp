@@ -82,15 +82,9 @@ void CEnvironment::Initialize()
 
 void CEnvironment::Update()
 {
-    Vector vecOrigin = gHUD.m_vecOrigin;
-
-    if (g_iUser1 > 0 && g_iUser1 != OBS_ROAMING)
-    {
-        if (cl_entity_t* pFollowing = gEngfuncs.GetEntityByIndex(g_iUser2))
-        {
-            vecOrigin = pFollowing->origin;
-        }
-    }
+    // Snow should always be around the view.
+    extern vec3_t v_origin;
+    Vector vecOrigin = v_origin;
 
     vecOrigin.z += 36.0f;
 
