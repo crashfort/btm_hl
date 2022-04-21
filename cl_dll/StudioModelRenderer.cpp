@@ -1702,7 +1702,10 @@ int CStudioModelRenderer::StudioDrawPlayer( int flags, entity_state_t *pplayer )
 
     // Jet does not use gait. Needed so we can strafe when hovering because the renderer
     // always tries to face the moving direction.
-	if (pplayer->gaitsequence && !atoi(gEngfuncs.PhysInfo_ValueForKey("jet")))
+    // Hack because we cannot use the data marked for "mods" in the private fields because they are used by the game!
+    // We cannot use PhysInfo_ValueForKey here because that is only for the local player, as replay bots are only run on the server.
+    // If we were to use PhysInfo_ValueForKey then jets would only play back properly if the local player was a jet too.
+	if (pplayer->gaitsequence && !strstr(m_pRenderModel->name, "harrier_gunship"))
 	{
 		vec3_t orig_angles;
 		m_pPlayerInfo = IEngineStudio.PlayerInfo( m_nPlayerIndex );
