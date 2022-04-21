@@ -18,6 +18,7 @@
 
 #include "studio_util.h"
 #include "r_studioint.h"
+#include "demo_api.h"
 
 #include "StudioModelRenderer.h"
 #include "GameStudioModelRenderer.h"
@@ -510,7 +511,12 @@ void CStudioModelRenderer::StudioSetUpTransform (int trivial_accept)
 	//Con_DPrintf("%.0f %0.f %0.f\n", modelpos[0], modelpos[1], modelpos[2] );
 	//Con_DPrintf("%.0f %0.f %0.f\n", angles[0], angles[1], angles[2] );
 
-	angles[PITCH] = -angles[PITCH];
+    // Angles for some reason are inverted for the jet when playing back.
+    if (!gEngfuncs.pDemoAPI->IsPlayingback())
+    {
+	    angles[PITCH] = -angles[PITCH];
+    }
+
 	AngleMatrix (angles, (*m_protationmatrix));
 
 	if ( !IEngineStudio.IsHardware() )
