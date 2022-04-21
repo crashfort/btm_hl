@@ -283,8 +283,20 @@ static void Replay_Play(const char* file)
     ClientPutInServer(ed);
 
     ed->v.flags |= FL_FAKECLIENT;
-    ed->v.solid = SOLID_NOT;
-    ed->v.movetype = MOVETYPE_NOCLIP;
+
+    // Jets should not be solid and not play any movement animations.
+    if (strstr(rp_model.string, "harrier_gunship"))
+    {
+        ed->v.solid = SOLID_NOT;
+        ed->v.movetype = MOVETYPE_NOCLIP;
+    }
+
+    else
+    {
+        // Regular player bots should play walk animations and take collisions with bullets.
+        ed->v.solid = SOLID_SLIDEBOX;
+        ed->v.movetype = MOVETYPE_WALK;
+    }
 
     // Set baseline from first frame.
 
