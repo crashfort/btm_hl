@@ -280,12 +280,6 @@ static void Replay_Play(const char* file)
     g_engfuncs.pfnSetClientKeyValue(bot_index, info_buf, "topcolor", rp_topcolor.string);
     g_engfuncs.pfnSetClientKeyValue(bot_index, info_buf, "bottomcolor", rp_bottomcolor.string);
 
-    // Make bot a jet.
-    if (rp_jet.value)
-    {
-        g_engfuncs.pfnSetPhysicsKeyValue(ed, "jet", "1");
-    }
-
     ClientPutInServer(ed);
 
     ed->v.flags |= FL_FAKECLIENT;
