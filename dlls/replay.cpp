@@ -14,7 +14,7 @@
 
 #include <vector>
 
-#define MAX_REPLAYS 24 // How many bots can be playing at once.
+#define MAX_REPLAYS 31 // How many bots can be playing at once.
 
 // Params the next replay should use.
 static cvar_t rp_model = { "rp_model", "barney", FCVAR_SERVER | FCVAR_NOEXTRAWHITEPACE };
@@ -61,6 +61,7 @@ static HANDLE rp_recording_file;
 static edict_t* rp_bots[MAX_REPLAYS]; // Bot entities.
 static bool rp_bot_slots[MAX_REPLAYS]; // What indexes are playing.
 static bool rp_bot_alive[MAX_REPLAYS]; // Playing but bot should not update if dead.
+static bool rp_bot_jet[MAX_REPLAYS]; // If the bot is a jet.
 
 static ReplaySequence rp_rec_seq;
 static ReplayHeader rp_rec_header;
@@ -74,6 +75,19 @@ bool Replay_Is_Bot(edict_t* ed)
         if (rp_bots[i] == ed)
         {
             return true;
+        }
+    }
+
+    return false;
+}
+
+bool Replay_Is_Jet(edict_t* ed)
+{
+    for (int i = 0; i < MAX_REPLAYS; i++)
+    {
+        if (rp_bots[i] == ed)
+        {
+            return rp_bot_jet[i];
         }
     }
 
@@ -126,6 +140,7 @@ static void Clear_Entities()
     memset(rp_bots, 0, sizeof(rp_bots));
     memset(rp_bot_slots, 0, sizeof(rp_bot_slots));
     memset(rp_bot_alive, 0, sizeof(rp_bot_alive));
+    memset(rp_bot_jet, 0, sizeof(rp_bot_jet));
 }
 
 extern int g_serveractive;
@@ -297,12 +312,13 @@ static void Replay_Play(const char* file)
 
     ed->v.flags |= FL_FAKECLIENT;
 
+    bool is_jet = !strcmp(rp_model.string, "harrier_gunship");
+
     // Jets should not be solid and not play any movement animations.
-    if (!strcmp(rp_model.string, "harrier_gunship"))
+    if (is_jet)
     {
         ed->v.solid = SOLID_NOT;
         ed->v.movetype = MOVETYPE_NOCLIP;
-        g_engfuncs.pfnSetPhysicsKeyValue(ed, "jet", "1"); // Need to reference it later.
     }
 
     else
@@ -325,6 +341,7 @@ static void Replay_Play(const char* file)
     rp_bots[index] = ed;
     rp_bot_slots[index] = true;
     rp_bot_alive[index] = true;
+    rp_bot_jet[index] = is_jet;
 }
 
 static void Replay_Play_Cmd()
@@ -465,7 +482,7 @@ static void Update_All_Bots()
                     entity->SelectItem(fr.weapon_name); // Change weapon if a new weapon is selected.
                 }
 
-                if (g_engfuncs.pfnGetPhysicsKeyValue(ed, "jet"))
+                if (Replay_Is_Jet(ed))
                 {
                     if (fr.button & IN_ATTACK)
                     {
