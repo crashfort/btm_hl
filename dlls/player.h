@@ -238,6 +238,8 @@ public:
     void FireJetRocket(Vector src);
     void FireJetRockets();
 
+    float m_nextRocketTime;
+
 	// JOHN:  sends custom messages if player HUD data has changed  (eg health, ammo)
 	virtual void UpdateClientData( void );
 	

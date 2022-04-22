@@ -285,10 +285,11 @@ static void Replay_Play(const char* file)
     ed->v.flags |= FL_FAKECLIENT;
 
     // Jets should not be solid and not play any movement animations.
-    if (strstr(rp_model.string, "harrier_gunship"))
+    if (!strcmp(rp_model.string, "harrier_gunship"))
     {
         ed->v.solid = SOLID_NOT;
         ed->v.movetype = MOVETYPE_NOCLIP;
+        g_engfuncs.pfnSetPhysicsKeyValue(ed, "jet", "1"); // Need to reference it later.
     }
 
     else
@@ -449,6 +450,14 @@ static void Update_All_Bots()
                 if (strcmp(STRING(entity->m_pActiveItem->pev->classname), fr.weapon_name))
                 {
                     entity->SelectItem(fr.weapon_name); // Change weapon if a new weapon is selected.
+                }
+
+                if (g_engfuncs.pfnGetPhysicsKeyValue(ed, "jet"))
+                {
+                    if (fr.button & IN_ATTACK)
+                    {
+                        entity->FireJetRockets();
+                    }
                 }
 
                 g_engfuncs.pfnRunPlayerMove(ed, fr.viewangles, fr.forwardmove, fr.sidemove, fr.upmove, fr.button, fr.impulse, fr.msec);

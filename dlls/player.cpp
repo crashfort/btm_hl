@@ -2970,6 +2970,7 @@ void CBasePlayer::Spawn( void )
 	m_lastx = m_lasty = 0;
 	
 	m_flNextChatTime = gpGlobals->time;
+    m_nextRocketTime = gpGlobals->time;
 
 	g_pGameRules->PlayerSpawn( this );
 }
@@ -4720,17 +4721,22 @@ BOOL CBasePlayer :: SwitchWeapon( CBasePlayerItem *pWeapon )
 	return TRUE;
 }
 
-static Vector Convert_ModelAngle_To_ViewAngle(const Vector& view_ang)
+static Vector Convert_ModelAngle_To_ViewAngle(edict_t* ed, const Vector& view_ang)
 {
-    auto ret = view_ang;
-    ret[0] /= -3.0f;
+    Vector ret = view_ang;
+
+    // Aim vectors are messed up for the jet.
+    if (g_engfuncs.pfnGetPhysicsKeyValue(ed, "jet") == NULL)
+    {
+        ret[0] /= -3.0f;
+    }
 
     return ret;
 }
 
 void CBasePlayer::FireJetRocket(Vector src)
 {
-    UTIL_MakeAimVectors(Convert_ModelAngle_To_ViewAngle(pev->angles));
+    UTIL_MakeAimVectors(Convert_ModelAngle_To_ViewAngle(edict(), pev->angles));
 
     MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, src);
     WRITE_BYTE(TE_SMOKE);
@@ -4742,7 +4748,7 @@ void CBasePlayer::FireJetRocket(Vector src)
     WRITE_BYTE(12); // framerate
     MESSAGE_END();
 
-    CBaseEntity* pRocket = CBaseEntity::Create("hvr_rocket", src, Convert_ModelAngle_To_ViewAngle(pev->angles), edict());
+    CBaseEntity* pRocket = CBaseEntity::Create("hvr_rocket", src, Convert_ModelAngle_To_ViewAngle(edict(), pev->angles), edict());
 
     if (pRocket)
     {
@@ -4752,7 +4758,14 @@ void CBasePlayer::FireJetRocket(Vector src)
 
 void CBasePlayer::FireJetRockets()
 {
-    UTIL_MakeAimVectors(Convert_ModelAngle_To_ViewAngle(pev->angles));
+    if (gpGlobals->time < m_nextRocketTime)
+    {
+        return;
+    }
+
+    m_nextRocketTime = gpGlobals->time + 0.5f;
+
+    UTIL_MakeAimVectors(Convert_ModelAngle_To_ViewAngle(edict(), pev->angles));
 
     // Offsets from the eye position where to fire the rockets (use a model viewer).
     Vector left_side = Vector(41, 62, 21);
