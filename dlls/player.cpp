@@ -773,6 +773,8 @@ void CBasePlayer::PackDeadPlayerItems( void )
 		}
 	}
 
+    // No weapon packs for end scene. Unfortunately missed to do this for btm31.
+    #if 0
 // create a box to pack the stuff into.
 	CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin, pev->angles, edict() );
 
@@ -803,6 +805,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	}
 
 	pWeaponBox->pev->velocity = pev->velocity * 1.2;// weaponbox has player's velocity, then some.
+    #endif
 
 	RemoveAllItems( TRUE );// now strip off everything that wasn't handled by the code above.
 }
@@ -2842,6 +2845,9 @@ edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer )
 		// we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
 		if ( !FNullEnt( pSpot ) )
 		{
+            // Bots may spawn on the same spot, we move their origins so they will always become unstuck.
+            // If a bot dies then it will not function.
+            #if 0
 			CBaseEntity *ent = NULL;
 			while ( (ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, 128 )) != NULL )
 			{
@@ -2849,6 +2855,7 @@ edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer )
 				if ( ent->IsPlayer() && !(ent->edict() == player) )
 					ent->TakeDamage( VARS(INDEXENT(0)), VARS(INDEXENT(0)), 300, DMG_GENERIC );
 			}
+            #endif
 			goto ReturnSpot;
 		}
 	}
