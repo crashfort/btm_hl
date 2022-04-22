@@ -4721,15 +4721,18 @@ BOOL CBasePlayer :: SwitchWeapon( CBasePlayerItem *pWeapon )
 	return TRUE;
 }
 
+bool Replay_Is_Bot(edict_t* ed);
+
 static Vector Convert_ModelAngle_To_ViewAngle(edict_t* ed, const Vector& view_ang)
 {
-    Vector ret = view_ang;
-
-    // Aim vectors are messed up for the jet.
-    if (g_engfuncs.pfnGetPhysicsKeyValue(ed, "jet") == NULL)
+    if (Replay_Is_Bot(ed))
     {
-        ret[0] /= -3.0f;
+        // Weird stuff with how pitch angles work, they are different for the local player and other players you see.
+        return view_ang;
     }
+
+    auto ret = view_ang;
+    ret[0] /= -3.0f;
 
     return ret;
 }
@@ -4752,7 +4755,8 @@ void CBasePlayer::FireJetRocket(Vector src)
 
     if (pRocket)
     {
-        pRocket->pev->velocity = (pev->velocity + gpGlobals->v_forward * 2000) + (gpGlobals->v_up * -64);
+        // Don't append our own velocity because it works weird for bot jets.
+        pRocket->pev->velocity = (gpGlobals->v_forward * 2000) + (gpGlobals->v_up * -64);
     }
 }
 
@@ -4763,7 +4767,7 @@ void CBasePlayer::FireJetRockets()
         return;
     }
 
-    m_nextRocketTime = gpGlobals->time + 0.5f;
+    m_nextRocketTime = gpGlobals->time + 0.3f;
 
     UTIL_MakeAimVectors(Convert_ModelAngle_To_ViewAngle(edict(), pev->angles));
 

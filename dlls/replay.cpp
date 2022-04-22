@@ -67,6 +67,19 @@ static ReplayHeader rp_rec_header;
 
 static ReplaySequence rp_play_seqs[MAX_REPLAYS];
 
+bool Replay_Is_Bot(edict_t* ed)
+{
+    for (int i = 0; i < MAX_REPLAYS; i++)
+    {
+        if (rp_bots[i] == ed)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static int Num_Recorded_Frames(ReplaySequence* seq)
 {
     return seq->frames.size();
