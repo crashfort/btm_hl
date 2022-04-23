@@ -332,6 +332,7 @@ static void Replay_Play(const char* file)
     {
         ed->v.solid = SOLID_NOT;
         ed->v.movetype = MOVETYPE_NOCLIP;
+        g_engfuncs.pfnSetPhysicsKeyValue(ed, "jet", "1");
     }
 
     else

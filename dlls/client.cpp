@@ -926,6 +926,8 @@ void ClientPrecache( void )
 		UTIL_PrecacheOther("monster_human_grunt");
 
     UTIL_PrecacheOther( "hvr_rocket" ); // Rockets for jet.
+
+    PRECACHE_SOUND("vehicles/harrier_loop.wav");
 }
 
 /*

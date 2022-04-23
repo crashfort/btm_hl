@@ -1990,7 +1990,6 @@ void CBasePlayer::PreThink(void)
 
     extern cvar_t rp_jet;
 
-
     if ((int)rp_jet.value != m_JetMode)
     {
         m_JetMode = (int)rp_jet.value;
@@ -2011,12 +2010,30 @@ void CBasePlayer::PreThink(void)
         }
     }
 
-    if (rp_jet.value)
+    if (atoi(g_engfuncs.pfnGetPhysicsKeyValue(edict(), "jet")))
     {
         if (m_afButtonPressed & IN_ATTACK)
         {
             FireJetRockets();
         }
+
+        // Basic sound for the jet, does not take movement thrusters into account which is what should be changing the pitch.
+        // Only to make it easier to find the jet in end scene.
+
+        float speed = Vector(pev->velocity).Length2D();
+        float pitch = (speed / (2500.0f * gpGlobals->frametime));
+
+        pitch = (int)(10.0f + (pitch * 255.0f) / 0.9f);
+
+        if (pitch > 255) pitch = 255;
+        if (pitch < 10) pitch = 10;
+
+        EMIT_SOUND_DYN(edict(), CHAN_STATIC, "vehicles/harrier_loop.wav", 1.0f, 0.3f, SND_CHANGE_PITCH, pitch);
+    }
+
+    else
+    {
+        STOP_SOUND(edict(), CHAN_STATIC, "vehicles/harrier_loop.wav");
     }
 }
 /* Time based Damage works as follows: 
