@@ -14,7 +14,7 @@
 
 #include <vector>
 
-#define MAX_REPLAYS 31 // How many bots can be playing at once.
+#define MAX_REPLAYS 28 // How many bots can be playing at once (HLTV limit).
 
 // Params the next replay should use.
 static cvar_t rp_model = { "rp_model", "barney", FCVAR_SERVER | FCVAR_NOEXTRAWHITEPACE };
@@ -474,7 +474,6 @@ static void Update_All_Bots()
             if (ed->v.deadflag != DEAD_NO && rp_bot_alive[i])
             {
                 rp_bot_alive[i] = false;
-                ClientKill(ed); // Play animation if bot dies during playback.
             }
 
             if (rp_bot_alive[i])
@@ -504,14 +503,14 @@ static void Update_All_Bots()
                 }
 
                 g_engfuncs.pfnRunPlayerMove(ed, fr.viewangles, fr.forwardmove, fr.sidemove, fr.upmove, fr.button, fr.impulse, fr.msec);
+
+                ed->v.iuser4++; // Frame in playback.
             }
 
             else
             {
-                g_engfuncs.pfnRunPlayerMove(ed, fr.viewangles, 0, 0, 0, 0, 0, 0); // Must always be run.
+                g_engfuncs.pfnRunPlayerMove(ed, fr.viewangles, 0, 0, 0, 0, 0, fr.msec); // Must always be run.
             }
-
-            ed->v.iuser4++; // Frame in playback.
         }
     }
 }
@@ -593,12 +592,18 @@ static void Bxt_Append_Cmd()
     g_engfuncs.pfnServerCommand(cmd);
 }
 
+static void Replay_Clear()
+{
+    Clear_Entities();
+}
+
 void Replay_Init()
 {
     g_engfuncs.pfnAddServerCommand("rp_record", Replay_Record_Cmd);
     g_engfuncs.pfnAddServerCommand("rp_stop", Replay_Stop_Cmd);
     g_engfuncs.pfnAddServerCommand("rp_play", Replay_Play_Cmd);
     g_engfuncs.pfnAddServerCommand("bxt_append", Bxt_Append_Cmd);
+    g_engfuncs.pfnAddServerCommand("rp_clear", Replay_Clear);
 
     CVAR_REGISTER(&rp_model);
     CVAR_REGISTER(&rp_topcolor);
