@@ -215,12 +215,25 @@ static void Replay_Stop_Cmd()
     rp_recording = false;
 }
 
-static Vector Convert_ViewAngle_To_ModelAngle(const Vector& view_ang)
+static Vector Fix_ViewAngle(edict_t* ed, Vector view_ang)
 {
-    auto ret = view_ang;
-    ret[0] /= -3.0f;
+    if (Replay_Is_Bot(ed))
+    {
+        return view_ang;
+    }
 
-    return ret;
+    view_ang[0] = -view_ang[0];
+    return view_ang;
+}
+
+static Vector Convert_ViewAngle_To_ModelAngle(edict_t* ed, Vector view_ang)
+{
+    if (Replay_Is_Jet(ed))
+    {
+        view_ang[0] /= -3.0f;
+    }
+
+    return view_ang;
 }
 
 static CBasePlayer* Get_Player_Entity(edict_t* ed)
@@ -334,7 +347,7 @@ static void Replay_Play(const char* file)
 
     ed->v.origin = fr.pos;
     ed->v.v_angle = fr.viewangles;
-    ed->v.angles = Convert_ViewAngle_To_ModelAngle(fr.angles);
+    ed->v.angles = Convert_ViewAngle_To_ModelAngle(ed, fr.angles);
     ed->v.iuser4 = 0; // Frame in playback.
     ed->v.euser4 = (edict_t*)seq;
 
@@ -468,7 +481,7 @@ static void Update_All_Bots()
             {
                 ed->v.origin = fr.pos;
                 ed->v.v_angle = fr.viewangles;
-                ed->v.angles = Convert_ViewAngle_To_ModelAngle(fr.angles);
+                ed->v.angles = Convert_ViewAngle_To_ModelAngle(ed, fr.angles);
 
                 #if 0
                 auto pos_diff = fr.pos - ed->v.origin;

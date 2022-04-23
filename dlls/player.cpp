@@ -4728,11 +4728,11 @@ BOOL CBasePlayer :: SwitchWeapon( CBasePlayerItem *pWeapon )
 	return TRUE;
 }
 
-bool Replay_Is_Bot(edict_t* ed);
+bool Replay_Is_Jet(edict_t* ed);
 
 static Vector Convert_ModelAngle_To_ViewAngle(edict_t* ed, const Vector& view_ang)
 {
-    if (Replay_Is_Bot(ed))
+    if (Replay_Is_Jet(ed))
     {
         // Weird stuff with how pitch angles work, they are different for the local player and other players you see.
         return view_ang;
