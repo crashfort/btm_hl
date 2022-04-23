@@ -1291,10 +1291,6 @@ void CItemGeneric::Spawn()
     {
         int sequence = LookupSequence(STRING(m_iSequence));
 
-        vec3_t mins;
-        vec3_t maxs;
-        ExtractBbox(sequence, mins, maxs);
-        UTIL_SetSize(pev, mins, maxs);
         UTIL_SetOrigin(pev, pev->origin);
 
         SetThink(&CItemGeneric::StartItem);
