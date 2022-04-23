@@ -190,7 +190,7 @@ int CHudTextMessage::MsgFunc_TextMsg( const char *pszName, int iSize, void *pbuf
 	{
 	case HUD_PRINTCENTER:
 		safe_sprintf( psz, MSG_BUF_SIZE, msg_text, sstr1, sstr2, sstr3, sstr4 );
-		CenterPrint( ConvertCRtoNL( psz ) );
+		// CenterPrint( ConvertCRtoNL( psz ) );
 		break;
 
 	case HUD_PRINTNOTIFY:
