@@ -512,6 +512,7 @@ void CStudioModelRenderer::StudioSetUpTransform (int trivial_accept)
 	//Con_DPrintf("%.0f %0.f %0.f\n", angles[0], angles[1], angles[2] );
 
 	angles[PITCH] = -angles[PITCH];
+    // angles[PITCH] /= 3.0f; // Fix for btm40. Yet again angles work different for the local player and other players.
 
 	AngleMatrix (angles, (*m_protationmatrix));
 
